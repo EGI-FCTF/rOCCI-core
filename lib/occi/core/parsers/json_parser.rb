@@ -34,13 +34,14 @@ module Occi
         # @return [Set] set of instances
         def entities(body, _headers = nil, expectation = nil)
           expectation ||= Occi::Core::Entity
+          logger.debug "Parsing #{expectation}(s) from #{body.inspect}"
           type = validate_entities! body
 
           entity_parser = Json::Entity.new(model: model)
           entities = entity_parser.json body, type
           entities.each do |entity|
             unless entity.is_a?(expectation)
-              raise Occi::Core::Errors::ParsingError, "#{self.class} -> Given entity isn't #{expectation}"
+              raise Occi::Core::Errors::ParsingError, "Entity is not of type #{expectation}"
             end
           end
 
@@ -54,6 +55,7 @@ module Occi
         # @param headers [Hash] raw headers as provided by the transport protocol
         # @return [Set] set of parsed instances
         def action_instances(body, _headers = nil)
+          logger.debug "Parsing Occi::Core::ActionInstance(s) from #{body.inspect}"
           Json::Validator.validate_action_instance! body
           Set.new [Json::ActionInstance.json(body, model)]
         end
@@ -67,6 +69,7 @@ module Occi
         # @return [Set] set of instances
         def categories(body, _headers = nil, expectation = nil)
           expectation ||= Occi::Core::Category
+          logger.debug "Parsing #{expectation}(s) from #{body.inspect}"
           Json::Validator.validate_category_identifiers! body
 
           cats = Set.new
@@ -81,14 +84,15 @@ module Occi
           found = nil
 
           %i[link resource entity-collection].each do |type|
+            logger.debug "Attempting to validate #{body.inspect} as #{type}"
             begin
               Json::Validator.validate! body, type
               found = type
             rescue => ex
-              logger.debug "#{self.class}: Body isn't #{type} - #{ex.message}"
+              logger.debug "Moving on, body does not contain valid #{type} - #{ex.message.inspect}"
             end
           end
-          raise Occi::Core::Errors::ParsingError, "#{self.class} -> No entity sub-type instance found" unless found
+          raise Occi::Core::Errors::ParsingError, 'No acceptable entity rendering found' unless found
 
           found
         end
@@ -105,10 +109,13 @@ module Occi
           def model(body, _headers, media_type, model)
             unless media_types.include?(media_type)
               raise Occi::Core::Errors::ParsingError,
-                    "#{self} -> model cannot be parsed from #{media_type.inspect}"
+                    "Model cannot be parsed from #{media_type.inspect}"
             end
+            logger.debug "Parsing model from #{media_type.inspect} in #{body.inspect}"
+
             Json::Validator.validate_model! body
             Json::Category.json body, model
+
             model
           end
 
@@ -121,8 +128,10 @@ module Occi
           def locations(body, _headers, media_type)
             unless media_types.include?(media_type)
               raise Occi::Core::Errors::ParsingError,
-                    "#{self} -> locations cannot be parsed from #{media_type.inspect}"
+                    "Locations cannot be parsed from #{media_type.inspect}"
             end
+            logger.debug "Parsing locations from #{media_type.inspect} in #{body.inspect}"
+
             Json::Validator.validate_locations! body
             handle(Occi::Core::Errors::ParsingError) { JSON.parse(body).map { |i| URI.parse(i) } }
           end

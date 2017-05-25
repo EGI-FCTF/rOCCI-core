@@ -20,10 +20,11 @@ module Occi
             # @return [Occi::Core::ActionInstance] action instance
             def json(body, model)
               parsed = raw_hash(body)
-              ep = Entity.new(model: model)
+              action = handle(Occi::Core::Errors::ParsingError) { model.find_by_identifier! parsed[:action] }
 
-              action = handle(Occi::Core::Errors::ParsingError) { model.find_by_identifier!(parsed[:action]) }
+              logger.debug "Identified #{action.class}[#{action.identifier}]"
               ai = Occi::Core::ActionInstance.new(action: action)
+              ep = Entity.new(model: model)
               ep.set_attributes!(ai.attributes, parsed[:attributes]) if parsed[:attributes]
 
               ai

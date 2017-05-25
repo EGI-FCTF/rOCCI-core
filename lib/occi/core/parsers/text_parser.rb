@@ -50,11 +50,12 @@ module Occi
         # @return [Set] set of instances
         def entities(body, headers, expectation = nil)
           expectation ||= Occi::Core::Entity
+          logger.debug "Parsing #{expectation} from #{body.inspect} and #{headers.inspect}" if logger_debug?
 
           entity_parser = Text::Entity.new(model: model)
           entity = entity_parser.plain transform(body, headers)
           unless entity.is_a?(expectation)
-            raise Occi::Core::Errors::ParsingError, "#{self.class} -> Given entity isn't #{expectation}"
+            raise Occi::Core::Errors::ParsingError, "Entity is not of type #{expectation}"
           end
 
           Set.new([entity].compact)
@@ -67,12 +68,14 @@ module Occi
         # @param headers [Hash] raw headers as provided by the transport protocol
         # @return [Set] set of parsed instances
         def action_instances(body, headers)
+          logger.debug "Parsing Occi::Core::ActionInstance from #{body.inspect} and #{headers.inspect}" if logger_debug?
+
           entity_parser = Text::Entity.new(model: model)
           tformed = transform(body, headers)
 
           cats = entity_parser.plain_categories tformed
           action = cats.detect { |c| c.is_a? Occi::Core::Action }
-          raise Occi::Core::Errors::ParsingError, "#{self.class} -> AI does not specify action" unless action
+          raise Occi::Core::Errors::ParsingError, 'ActionInstance does not specify action' unless action
 
           ai = Occi::Core::ActionInstance.new(action: action)
           entity_parser.plain_attributes! tformed, ai.attributes
@@ -88,10 +91,13 @@ module Occi
         # @return [Set] set of instances
         def categories(body, headers, expectation = nil)
           expectation ||= Occi::Core::Category
+          logger.debug "Parsing #{expectation} from #{body.inspect} and #{headers.inspect}" if logger_debug?
+
           cats = transform(body, headers).map do |line|
             cat = Text::Category.plain_category(line, false)
             lookup "#{cat[:scheme]}#{cat[:term]}", expectation
           end
+
           Set.new(cats)
         end
 
@@ -117,8 +123,10 @@ module Occi
           # @return [Occi::Core::Model] model instance filled with parsed categories
           def model(body, headers, media_type, model)
             if HEADERS_TEXT_TYPES.include? media_type
+              logger.debug "Parsing model from #{headers.inspect}"
               Text::Category.plain transform_headers(headers), model
             elsif PLAIN_TEXT_TYPES.include? media_type
+              logger.debug "Parsing model from #{body.inspect}"
               Text::Category.plain transform_body(body), model
             else
               raise Occi::Core::Errors::ParsingError,
@@ -134,10 +142,13 @@ module Occi
           # @return [Array] list of extracted URIs
           def locations(body, headers, media_type)
             if URI_LIST_TYPES.include? media_type
+              logger.debug "Parsing locations from uri-list in #{body.inspect}"
               Text::Location.uri_list transform_body(body)
             elsif HEADERS_TEXT_TYPES.include? media_type
+              logger.debug "Parsing locations from #{headers.inspect}"
               Text::Location.plain transform_headers(headers)
             else
+              logger.debug "Parsing locations from #{body.inspect}"
               Text::Location.plain transform_body(body)
             end
           end
@@ -159,6 +170,7 @@ module Occi
           # @param headers [Hash] hash with raw header key-value pairs
           # @return [Array] an array of body-like lines
           def transform_headers(headers)
+            logger.debug "Transforming headers #{headers.inspect}" if logger_debug?
             unify_headers(
               canonize_headers(
                 normalize_headers(headers)
@@ -177,6 +189,8 @@ module Occi
             ]                                                 # remove 'HTTP_' prefix in keys
             headers.delete_if { |_k, v| v.blank? }            # remove pairs with empty values
             headers.keep_if { |k, _v| OCCI_KEYS.include?(k) } # drop non-OCCI pairs
+
+            logger.debug "Normalized headers #{headers.inspect}" if logger_debug?
             headers
           end
 
@@ -194,6 +208,7 @@ module Occi
               canonical[pref.first] = [canonize_header_value(value)].flatten
             end
 
+            logger.debug "Canonized headers #{canonical.inspect}" if logger_debug?
             canonical
           end
 
@@ -219,6 +234,8 @@ module Occi
             headers.each_pair do |k, v|
               lines << v.map { |val| "#{k}: #{val}" }
             end
+
+            logger.debug "Unified headers #{lines.inspect}" if logger_debug?
             lines.flatten.sort
           end
 
@@ -231,7 +248,7 @@ module Occi
             return unless key_name_groups.any? { |elm| (headers_keys & elm).count > 1 }
 
             raise Occi::Core::Errors::ParsingError,
-                  "#{self} -> Headers #{headers_keys.inspect} contain mixed key notations"
+                  "Headers #{headers_keys.inspect} contain mixed key notations"
           end
 
           # Returns a list of available key name groups accessible as constants by name on this class.

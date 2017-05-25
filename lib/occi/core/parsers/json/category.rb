@@ -53,12 +53,15 @@ module Occi
 
             # :nodoc:
             def instatiate_hash(raw, klass)
+              logger.debug "Creating #{klass} from #{raw.inspect}" if logger.debug?
+
               obj = klass.new(
                 term: raw[:term], schema: raw[:scheme], title: raw[:title],
                 attributes: attribute_definitions(raw[:attributes])
               )
 
               if obj.respond_to?(:location)
+                logger.debug "Setting location #{raw[:location].inspect}" if logger.debug?
                 obj.location = handle(Occi::Core::Errors::ParsingError) { URI.parse(raw[:location]) }
               end
 
@@ -71,9 +74,10 @@ module Occi
 
               attr_defs = {}
               raw.each_pair do |k, v|
+                logger.debug "Creating AttributeDefinition for #{k.inspect} from #{v.inspect}" if logger.debug?
                 def_hsh = typecast(v)
                 unless def_hsh[:type]
-                  raise Occi::Core::Errors::ParsingError, "#{self} -> Attribute #{k.to_s.inspect} has no type"
+                  raise Occi::Core::Errors::ParsingError, "Attribute #{k.to_s.inspect} has no type"
                 end
                 attr_defs[k.to_s] = Occi::Core::AttributeDefinition.new def_hsh
               end
@@ -91,12 +95,14 @@ module Occi
 
             # :nodoc:
             def lookup_applies_references!(mixin, derefd, parsed_rel)
+              logger.debug "Looking up applies from #{parsed_rel.inspect}" if logger.debug?
               return if parsed_rel.blank?
               parsed_rel.each { |kind| mixin.applies << first_or_die(derefd, kind) }
             end
 
             # :nodoc:
             def lookup_depends_references!(mixin, derefd, parsed_rel)
+              logger.debug "Looking up depens from #{parsed_rel.inspect}" if logger.debug?
               return if parsed_rel.blank?
               parsed_rel.each { |mxn| mixin.depends << first_or_die(derefd, mxn) }
             end
