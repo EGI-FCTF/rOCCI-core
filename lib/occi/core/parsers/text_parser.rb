@@ -58,7 +58,7 @@ module Occi
             raise Occi::Core::Errors::ParsingError, "Entity is not of type #{expectation}"
           end
 
-          Set.new([entity].compact)
+          setify(entity)
         end
 
         # Parses action instances from the given body/headers. Only actions already declared in the model are
@@ -69,17 +69,14 @@ module Occi
         # @return [Set] set of parsed instances
         def action_instances(body, headers)
           logger.debug "Parsing Occi::Core::ActionInstance from #{body.inspect} and #{headers.inspect}" if logger_debug?
-
           entity_parser = Text::Entity.new(model: model)
           tformed = transform(body, headers)
 
-          cats = entity_parser.plain_categories tformed
-          action = cats.detect { |c| c.is_a? Occi::Core::Action }
-          raise Occi::Core::Errors::ParsingError, 'ActionInstance does not specify action' unless action
-
-          ai = Occi::Core::ActionInstance.new(action: action)
-          entity_parser.plain_attributes! tformed, ai.attributes
-          Set.new([ai].compact)
+          action_instance = Occi::Core::ActionInstance.new(
+            action: action_instance_category(entity_parser, tformed)
+          )
+          entity_parser.plain_attributes! tformed, action_instance.attributes
+          setify(action_instance)
         end
 
         # Parses categories from the given body/headers and returns corresponding instances
@@ -98,7 +95,7 @@ module Occi
             lookup "#{cat[:scheme]}#{cat[:term]}", expectation
           end
 
-          Set.new(cats)
+          setify(cats)
         end
 
         # Transforms `body` and `headers` into an array of lines parsable by 'text/plain'
@@ -141,14 +138,12 @@ module Occi
           # @param media_type [String] media type string as provided by the transport protocol
           # @return [Array] list of extracted URIs
           def locations(body, headers, media_type)
+            logger.debug "Parsing locations from #{media_type.inspect} in #{body.inspect} and #{headers.inspect}"
             if URI_LIST_TYPES.include? media_type
-              logger.debug "Parsing locations from uri-list in #{body.inspect}"
               Text::Location.uri_list transform_body(body)
             elsif HEADERS_TEXT_TYPES.include? media_type
-              logger.debug "Parsing locations from #{headers.inspect}"
               Text::Location.plain transform_headers(headers)
             else
-              logger.debug "Parsing locations from #{body.inspect}"
               Text::Location.plain transform_body(body)
             end
           end
@@ -260,6 +255,19 @@ module Occi
         end
 
         protected
+
+        # :nodoc:
+        def action_instance_category(entity_parser, action_instance)
+          cats = entity_parser.plain_categories action_instance
+          action = cats.detect { |c| c.is_a? Occi::Core::Action }
+          raise Occi::Core::Errors::ParsingError, 'ActionInstance does not specify action' unless action
+          action
+        end
+
+        # :nodoc:
+        def setify(object)
+          object.is_a?(Enumerable) ? Set.new(object) : Set.new([object].compact)
+        end
 
         # :nodoc:
         def post_initialize(args)
