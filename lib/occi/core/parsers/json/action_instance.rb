@@ -12,6 +12,10 @@ module Occi
           extend Helpers::RawJsonParser
 
           class << self
+            # Shortcuts to interesting methods on logger
+            DELEGATED = %i[debug? info? warn? error? fatal?].freeze
+            delegate(*DELEGATED, to: :logger, prefix: true)
+
             # Parses action instances. Internal references between objects are converted from strings
             # to actual objects. Actions have to be declared in the provided model.
             #
@@ -27,6 +31,7 @@ module Occi
               ep = Entity.new(model: model)
               ep.set_attributes!(ai.attributes, parsed[:attributes]) if parsed[:attributes]
 
+              logger.debug "Parsed into ActionInstance #{ai.inspect}" if logger_debug?
               ai
             end
           end

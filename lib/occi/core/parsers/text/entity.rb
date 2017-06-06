@@ -57,7 +57,7 @@ module Occi
           def plain(lines)
             cats = plain_categories(lines)
             kind = cats.detect { |c| c.is_a?(Occi::Core::Kind) }
-            raise Occi::Core::Errors::ParsingError, "#{self.class} -> Entity does not specify its kind" unless kind
+            raise Occi::Core::Errors::ParsingError, 'Entity does not specify its kind' unless kind
 
             entity = @_ib.build(kind.identifier)
             cats.each { |cat| cat.is_a?(Occi::Core::Mixin) && entity << cat }
@@ -92,7 +92,7 @@ module Occi
               name, value = raw_attribute(line)
               unless attributes[name]
                 raise Occi::Core::Errors::ParsingError,
-                      "#{self.class} -> attribute #{name.inspect} is not allowed for this entity"
+                      "Attribute #{name.inspect} is not allowed for this entity"
               end
               attributes[name].value = handle(Occi::Core::Errors::ParsingError) do
                 typecast value, attributes[name].attribute_definition.type
@@ -109,7 +109,7 @@ module Occi
             matched = line.match(ATTRIBUTE_REGEXP)
             unless matched
               raise Occi::Core::Errors::ParsingError,
-                    "#{self.class} -> #{line.inspect} does not match expectations for Attribute"
+                    "#{line.inspect} does not match expectations for Attribute"
             end
             [matched[:name], matched[:string] || matched[:number] || matched[:bool]]
           end
@@ -126,7 +126,7 @@ module Occi
               matched = line.match(LINK_REGEXP)
               unless matched
                 raise Occi::Core::Errors::ParsingError,
-                      "#{self.class} -> #{line.inspect} does not match expectations for Link"
+                      "#{line.inspect} does not match expectations for Link"
               end
               plain_link! matched, entity
             end
@@ -157,7 +157,7 @@ module Occi
           def plain_oglink!(md, entity)
             unless entity.respond_to?(:links)
               raise Occi::Core::Errors::ParsingError,
-                    "#{self.class} -> Cannot assign links to entity #{entity.id} which does not support them"
+                    "Cannot assign links to entity #{entity.id} which does not support them"
             end
 
             link = plain_oglink_instance(md)
@@ -177,7 +177,7 @@ module Occi
           def plain_oglink_instance(md)
             if md[:category].blank? || md[:self].blank?
               raise Occi::Core::Errors::ParsingError,
-                    "#{self.class} -> Link #{md[:uri].inspect} is missing type and location information"
+                    "Link #{md[:uri].inspect} is missing type and location information"
             end
 
             categories = md[:category].split
@@ -197,7 +197,7 @@ module Occi
           def plain_oglink_attributes!(md, link)
             if md[:attributes].blank?
               raise Occi::Core::Errors::ParsingError,
-                    "#{self.class} -> Link #{link.id} is missing attribute information"
+                    "Link #{link.id} is missing attribute information"
             end
 
             line = md[:attributes].strip.gsub(/^;\s*/, '')
@@ -214,8 +214,7 @@ module Occi
           # @return [Object] typecasted value
           def typecast(value, type)
             if value.nil? || type.nil?
-              raise Occi::Core::Errors::ParsingError,
-                    "#{self.class} -> Cannot typecast (un)set value to (un)set type"
+              raise Occi::Core::Errors::ParsingError, 'Cannot typecast (un)set value to (un)set type'
             end
 
             self.class.typecaster[type].call(value)
