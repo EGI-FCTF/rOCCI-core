@@ -119,15 +119,16 @@ module Occi
           # @param model [Occi::Core::Model] `Model`-like instance to be populated (may contain existing categories)
           # @return [Occi::Core::Model] model instance filled with parsed categories
           def model(body, headers, media_type, model)
+            if logger_debug?
+              logger.debug "Parsing model from #{media_type.inspect} in #{body.inspect} and #{headers.inspect}"
+            end
+
             if HEADERS_TEXT_TYPES.include? media_type
-              logger.debug "Parsing model from #{headers.inspect}"
               Text::Category.plain transform_headers(headers), model
             elsif PLAIN_TEXT_TYPES.include? media_type
-              logger.debug "Parsing model from #{body.inspect}"
               Text::Category.plain transform_body(body), model
             else
-              raise Occi::Core::Errors::ParsingError,
-                    "#{self} -> model cannot be parsed from #{media_type.inspect}"
+              raise Occi::Core::Errors::ParsingError, "Model cannot be parsed from #{media_type.inspect}"
             end
           end
 
@@ -138,7 +139,10 @@ module Occi
           # @param media_type [String] media type string as provided by the transport protocol
           # @return [Array] list of extracted URIs
           def locations(body, headers, media_type)
-            logger.debug "Parsing locations from #{media_type.inspect} in #{body.inspect} and #{headers.inspect}"
+            if logger_debug?
+              logger.debug "Parsing locations from #{media_type.inspect} in #{body.inspect} and #{headers.inspect}"
+            end
+
             if URI_LIST_TYPES.include? media_type
               Text::Location.uri_list transform_body(body)
             elsif HEADERS_TEXT_TYPES.include? media_type
@@ -242,8 +246,7 @@ module Occi
           def validate_header_keys!(headers_keys)
             return unless key_name_groups.any? { |elm| (headers_keys & elm).count > 1 }
 
-            raise Occi::Core::Errors::ParsingError,
-                  "Headers #{headers_keys.inspect} contain mixed key notations"
+            raise Occi::Core::Errors::ParsingError, "Headers #{headers_keys.inspect} contain mixed key notations"
           end
 
           # Returns a list of available key name groups accessible as constants by name on this class.

@@ -123,6 +123,10 @@ module Occi
         end
 
         class << self
+          # Shortcuts to interesting methods on logger
+          DELEGATED = %i[debug? info? warn? error? fatal?].freeze
+          delegate(*DELEGATED, to: :logger, prefix: true)
+
           # Returns a list of supported media types for this parser.
           #
           # @return [Array] list of supported media types

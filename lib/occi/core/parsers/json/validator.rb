@@ -26,10 +26,12 @@ module Occi
             # @param type [Symbol] schema selector
             # @raise [Occi::Core::Errors::ParsingError] on validation failure
             def validate!(json, type)
+              logger.debug "Validating #{json.inspect} as #{type}" if logger_debug?
+
               JSON::Validator.schema_reader = JSON::Schema::Reader.new(accept_uri: false, accept_file: true)
               JSON::Validator.validate!(schema_for(type), json, json: true)
             rescue JSON::Schema::JsonParseError, JSON::Schema::ValidationError => e
-              raise Occi::Core::Errors::ParsingError, "#{self} -> #{e.message}"
+              raise Occi::Core::Errors::ParsingError, e.message
             end
 
             # :nodoc:

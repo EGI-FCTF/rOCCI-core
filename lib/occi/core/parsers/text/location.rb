@@ -11,6 +11,10 @@ module Occi
           include Helpers::ErrorHandler
 
           class << self
+            # Shortcuts to interesting methods on logger
+            DELEGATED = %i[debug? info? warn? error? fatal?].freeze
+            delegate(*DELEGATED, to: :logger, prefix: true)
+
             # Parses text/plain OCCI locations into `URI` instances suitable for futher processing.
             # Every location line is expected to begin with 'X-OCCI-Location'.
             #
@@ -21,6 +25,8 @@ module Occi
 
               locations = lines.map do |line|
                 next if line.blank?
+                logger.debug "Parsing location from line #{line.inspect}" if logger_debug?
+
                 matched = line.match(regexp)
                 unless matched
                   raise Occi::Core::Errors::ParsingError, "#{line.inspect} does not match 'X-OCCI-Location: URI'"
@@ -39,8 +45,11 @@ module Occi
             def uri_list(lines)
               uris = lines.map do |line|
                 next if line.blank? || line.start_with?('#')
+                logger.debug "Parsing location from line #{line.inspect}" if logger_debug?
+
                 handle(Occi::Core::Errors::ParsingError) { URI.parse(line.strip) }
               end
+
               uris.compact
             end
           end

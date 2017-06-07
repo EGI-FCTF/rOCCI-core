@@ -136,6 +136,7 @@ module Occi
             end
             return value unless TYPECASTER_HASH.key?(type)
 
+            logger.debug "Typecasting value #{value.inspect} to #{type}" if logger_debug?
             TYPECASTER_HASH[type].call(value)
           end
 

@@ -59,12 +59,26 @@ module Occi
               end
 
               cat = matchdata_to_hash(matched)
-              return cat unless full
+              full ? plain_category_extended(cat) : plain_category_partial(cat)
+            end
 
+            # Cleans up partially parsed hash. Removes all potentially inconsitent or unfinished data structures.
+            #
+            # @param cat [Hash] partially parsed hash
+            # @return [Hash] clean partially parsed hash
+            def plain_category_partial(cat)
+              %i[attributes rel actions].each { |el| cat[el] = nil }
+              cat
+            end
+
+            # Finishes parsing of attributes, actions, and referenced categories.
+            #
+            # @param cat [Hash] partially parsed hash
+            # @return [Hash] fully parsed hash
+            def plain_category_extended(cat)
               cat[:attributes] = plain_attributes(cat[:attributes]) if cat[:attributes]
               cat[:rel] = plain_identifiers(cat[:rel]) if cat[:rel]
               cat[:actions] = plain_identifiers(cat[:actions]) if cat[:actions]
-
               cat
             end
 
